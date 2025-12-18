@@ -193,3 +193,161 @@ The request must include a JSON body with the following structure:
 - JWT token expires in 1 hour
 - For security reasons, the same error message is returned whether the email doesn't exist or the password is incorrect
 - The response does not include the password field for security reasons
+- Token is also set as a cookie in the response
+
+## User Profile Endpoint
+
+### GET /users/profile
+
+Retrieve the authenticated user's profile information.
+
+#### Authentication
+
+This endpoint requires authentication. Include the JWT token in one of the following ways:
+
+- **Cookie**: Token automatically sent if stored in cookies
+- **Authorization Header**: `Authorization: Bearer <token>`
+
+#### Request Body
+
+No request body required.
+
+#### Response
+
+##### Success Response (200 OK)
+
+```json
+{
+  "user": {
+    "_id": "507f1f77bcf86cd799439011",
+    "fullname": {
+      "firstname": "John",
+      "lastname": "Doe"
+    },
+    "email": "john.doe@example.com"
+  }
+}
+```
+
+##### Error Response (401 Unauthorized)
+
+```json
+{
+  "message": "Unauthorized"
+}
+```
+
+#### Status Codes
+
+| Status Code | Description                                       |
+| ----------- | ------------------------------------------------- |
+| 200         | Profile retrieved successfully                    |
+| 401         | Unauthorized - missing, invalid, or expired token |
+| 500         | Server error                                      |
+
+#### Notes
+
+- Requires a valid JWT token
+- Returns the user object without the password field
+- Token can be blacklisted after logout
+
+## User Logout Endpoint
+
+### GET /users/logout
+
+Log out the authenticated user by invalidating their token.
+
+#### Authentication
+
+This endpoint requires authentication. Include the JWT token in one of the following ways:
+
+- **Cookie**: Token automatically sent if stored in cookies
+- **Authorization Header**: `Authorization: Bearer <token>`
+
+#### Request Body
+
+No request body required.
+
+#### Response
+
+##### Success Response (200 OK)
+
+```json
+{
+  "message": "Logged out successfully"
+}
+```
+
+##### Error Response (401 Unauthorized)
+
+```json
+{
+  "message": "Unauthorized"
+}
+```
+
+#### Status Codes
+
+| Status Code | Description                                       |
+| ----------- | ------------------------------------------------- |
+| 200         | User logged out successfully                      |
+| 401         | Unauthorized - missing, invalid, or expired token |
+| 500         | Server error                                      |
+
+#### Notes
+
+- Clears the authentication token cookie
+- Adds the token to a blacklist to prevent further use
+- After logout, the token cannot be used for authentication
+- User must login again to receive a new token
+
+## Authentication Middleware
+
+### Overview
+
+The authentication middleware (`authUser`) protects routes that require user authentication. It verifies the JWT token and attaches the user object to the request.
+
+### How It Works
+
+1. **Token Extraction**: Retrieves token from cookies or Authorization header
+2. **Token Validation**: Checks if token exists and is not blacklisted
+3. **JWT Verification**: Verifies token signature and expiration
+4. **User Attachment**: Fetches user from database and attaches to `req.user`
+5. **Access Grant**: Calls `next()` to proceed to the route handler
+
+### Token Sources
+
+The middleware accepts tokens from two sources (in order of priority):
+
+1. **Cookies**: `req.cookies.token`
+2. **Authorization Header**: `Authorization: Bearer <token>`
+
+### Error Responses
+
+All authentication failures return:
+
+```json
+{
+  "message": "Unauthorized"
+}
+```
+
+**Status Code**: 401 Unauthorized
+
+### Common Failure Scenarios
+
+- Token is missing from request
+- Token has been blacklisted (after logout)
+- Token signature is invalid
+- Token has expired
+- User associated with token no longer exists
+
+### Usage Example
+
+Protected routes automatically have access to the authenticated user:
+
+```javascript
+router.get("/profile", authMiddleware.authUser, userController.getUserProfile);
+```
+
+The `req.user` object contains the full user document (excluding password) for use in route handlers.
