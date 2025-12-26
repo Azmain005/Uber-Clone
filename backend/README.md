@@ -351,3 +351,157 @@ router.get("/profile", authMiddleware.authUser, userController.getUserProfile);
 ```
 
 The `req.user` object contains the full user document (excluding password) for use in route handlers.
+
+## Captain Registration Endpoint
+
+### POST /captains/register
+
+Register a new captain account with vehicle information.
+
+#### Request Body
+
+The request must include a JSON body with the following structure:
+
+```json
+{
+  "fullname": {
+    "firstname": "string",
+    "lastname": "string"
+  },
+  "email": "string",
+  "password": "string",
+  "vehicle": {
+    "color": "string",
+    "plate": "string",
+    "capacity": number,
+    "vehicleType": "string"
+  }
+}
+```
+
+#### Field Requirements
+
+| Field                 | Type   | Required | Validation                           |
+| --------------------- | ------ | -------- | ------------------------------------ |
+| `fullname.firstname`  | String | Yes      | Minimum 3 characters                 |
+| `fullname.lastname`   | String | No       | Minimum 3 characters (if provided)   |
+| `email`               | String | Yes      | Valid email format                   |
+| `password`            | String | Yes      | Minimum 6 characters                 |
+| `vehicle.color`       | String | Yes      | Minimum 3 characters                 |
+| `vehicle.plate`       | String | Yes      | Minimum 3 characters, must be unique |
+| `vehicle.capacity`    | Number | Yes      | Minimum 1                            |
+| `vehicle.vehicleType` | String | Yes      | Must be one of: 'bike', 'car', 'cng' |
+
+#### Example Request
+
+```json
+{
+  "fullname": {
+    "firstname": "test_captain_firstname",
+    "lastname": "test_captain_lastname"
+  },
+  "email": "test_email@gmail.com",
+  "password": "test_captain",
+  "vehicle": {
+    "color": "red",
+    "plate": "MP 04 XY 6204",
+    "capacity": 3,
+    "vehicleType": "car"
+  }
+}
+```
+
+#### Response
+
+##### Success Response (201 Created)
+
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "captain": {
+    "_id": "507f1f77bcf86cd799439011",
+    "fullname": {
+      "firstname": "test_captain_firstname",
+      "lastname": "test_captain_lastname"
+    },
+    "email": "test_email@gmail.com",
+    "vehicle": {
+      "color": "red",
+      "plate": "MP 04 XY 6204",
+      "capacity": 3,
+      "vehicleType": "car"
+    },
+    "status": "inactive"
+  }
+}
+```
+
+##### Error Response (400 Bad Request)
+
+```json
+{
+  "errors": [
+    {
+      "msg": "First name must be at least 3 characters long",
+      "param": "fullname.firstname",
+      "location": "body"
+    },
+    {
+      "msg": "Please enter a valid email address",
+      "param": "email",
+      "location": "body"
+    },
+    {
+      "msg": "Password must be at least 6 characters long",
+      "param": "password",
+      "location": "body"
+    },
+    {
+      "msg": "Color must be at least 3 characters long",
+      "param": "vehicle.color",
+      "location": "body"
+    },
+    {
+      "msg": "Plate must be at least 3 characters long",
+      "param": "vehicle.plate",
+      "location": "body"
+    },
+    {
+      "msg": "Capacity must be at least 1",
+      "param": "vehicle.capacity",
+      "location": "body"
+    },
+    {
+      "msg": "Vehicle type must be bike, car, or cng",
+      "param": "vehicle.vehicleType",
+      "location": "body"
+    }
+  ]
+}
+```
+
+##### Error Response (400 Bad Request - Duplicate Email)
+
+```json
+{
+  "message": "Captain with this email already exists"
+}
+```
+
+#### Status Codes
+
+| Status Code | Description                           |
+| ----------- | ------------------------------------- |
+| 201         | Captain successfully created          |
+| 400         | Validation error - invalid input data |
+| 500         | Server error                          |
+
+#### Notes
+
+- Password is automatically hashed before storage using bcrypt
+- JWT token expires in 24 hours
+- Email must be unique (duplicate emails will return an error)
+- Vehicle plate must be unique across all captains
+- Captain status defaults to 'inactive'
+- The response does not include the password field for security reasons
+- Vehicle type is restricted to three options: 'bike', 'car', or 'cng'
